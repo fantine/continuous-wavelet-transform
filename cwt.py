@@ -1,12 +1,7 @@
 import numpy as np
 
-__all__ = ["cwt", "icwt", "cwt2d", "icwt2d", "dyadic_scales", "freq_from_scales",
-           "scales_from_freq"]
-
 PI2 = 2 * np.pi
 
-
-### BEGIN STANFORD CODE ###
 
 def angular_freq(N):
   """Compute angular frequencies
@@ -36,7 +31,6 @@ def angular_freq(N):
       w[i] = PI2 * (i - N) / N
 
   return w
-
 
 
 def dyadic_scales(N, dj=0.25, wavelet='morlet', w0=6):
@@ -75,7 +69,6 @@ def dyadic_scales(N, dj=0.25, wavelet='morlet', w0=6):
   return s
 
 
-
 def freq_from_scales(s, dt=1, wavelet='morlet', w0=6):
   """Compute frequencies or wavenumbers from abstract scales
 
@@ -99,11 +92,10 @@ def freq_from_scales(s, dt=1, wavelet='morlet', w0=6):
     raise ValueError('s (scales) must be an 1d numpy array')
 
   if wavelet == 'morlet':
-    return  (w0 + np.sqrt(2 + w0**2)) / (4 * np.pi * dt * s_arr)
+    return (w0 + np.sqrt(2 + w0**2)) / (4 * np.pi * dt * s_arr)
   else:
     raise ValueError('wavelet function not available')
 
-    
 
 def scales_from_freq(f, dt=1, wavelet='morlet', w0=6):
   """Compute abstract scales from frequencies or wavenumbers
@@ -125,13 +117,13 @@ def scales_from_freq(f, dt=1, wavelet='morlet', w0=6):
   f_arr = np.asarray(f)
 
   if f_arr.ndim is not 1:
-    raise ValueError('f (frequencies or wavenumbers) must be an 1d numpy array')
+    raise ValueError(
+        'f (frequencies or wavenumbers) must be an 1d numpy array')
 
   if wavelet == 'morlet':
     return (w0 + np.sqrt(2 + w0**2)) / (4 * np.pi * dt * f_arr)
   else:
     raise ValueError('wavelet function not available')
-
 
 
 def morlet1d_ft(s, w, w0=6):
@@ -159,10 +151,9 @@ def morlet1d_ft(s, w, w0=6):
   c = (4 * np.pi)**-0.25
 
   for i in range(s.shape[0]):
-      psi[i][pos] = np.sqrt(s[i]) * c * np.exp(- (s[i] * w[pos] - w0)**2 / 2)
+    psi[i][pos] = np.sqrt(s[i]) * c * np.exp(- (s[i] * w[pos] - w0)**2 / 2)
 
   return psi
-
 
 
 def cwt1d(x, s, dt=1, wavelet='morlet', w0=6):
@@ -195,7 +186,7 @@ def cwt1d(x, s, dt=1, wavelet='morlet', w0=6):
     psi = morlet1d_ft(s_arr, w, w0)
   else:
     raise ValueError('wavelet function is not available')
-  
+
   # The array that will contain the transformed data of shape (n_scales, n_axis1)
   X_ARR = np.empty((psi.shape[0], psi.shape[1]), dtype='complex128')
 
@@ -205,14 +196,13 @@ def cwt1d(x, s, dt=1, wavelet='morlet', w0=6):
 
   # Perform the circular convolution in Fourier domain
   for i in range(X_ARR.shape[0]):
-    # Even if the Fourier transform of the Morlet wavelet is real, 
+    # Even if the Fourier transform of the Morlet wavelet is real,
     # keep the conjugate here, so as to allow other wavelets
     X_ARR[i] = np.fft.ifft(x_arr_ft * np.conj(psi[i]))
 
   # TODO Write helper function to calculate adjustment coefficient for all n_axis1 and dt
 
   return X_ARR
-
 
 
 def icwt1d(X, s, dt=1, wavelet='morlet', w0=6):
@@ -240,30 +230,24 @@ def icwt1d(X, s, dt=1, wavelet='morlet', w0=6):
   if X_arr.ndim is not 2:
     raise ValueError('X (transformed data) must be an 2d numpy array')
 
-    
   if s_arr.ndim is not 1:
     raise ValueError('s (scales) must be an 1d numpy array')
 
   # Default Python behavior is to pass on pointers for arrays
-  # Therefore, we have to create a new array in order not to mess up 
-  # the input data 
+  # Therefore, we have to create a new array in order not to mess up
+  # the input data
   X_ARR = np.empty_like(X_arr)
-    
+
   # The reconstruction can be performed as a weighted summation
   for i in range(s_arr.shape[0]):
     X_ARR[i] = X_arr[i] / s_arr[i]**0.5
-    
+
   # TODO Write helper function to calculate reconstruction coefficient for all n_axis1, ds, and dt
   c = 1.51749474811
   x = c * np.sum(np.real(X_ARR), axis=0)
 
   return x
 
-### END STANFORD CODE ###
-
-
-
-### BEGIN SLB CODE ###
 
 def morlet2d_ft(s, thetas, w1, w2, w0=6):
   """Fourier tranformed scaled 2D Morlet wavelet dictionary
@@ -284,24 +268,24 @@ def morlet2d_ft(s, thetas, w1, w2, w0=6):
   psi = np.empty((s.shape[0], thetas.shape[0], w1.shape[0], w2.shape[0]))
   kx, ky = np.meshgrid(w2, w1)
 
-  for j, theta in enumerate(thetas): 
-      theta = - theta # inverse of the rotation matrix
-      
-      # Apply the rotation matrix
-      kxr = (kx * np.cos(theta) + ky * np.sin(theta))
-      kyr = (ky * np.cos(theta) - kx * np.sin(theta))
+  for j, theta in enumerate(thetas):
+    theta = - theta  # inverse of the rotation matrix
 
-      for i in range(s.shape[0]):
-        kxri = s[i] * kxr
-        kyri = s[i] * kyr
+    # Apply the rotation matrix
+    kxr = (kx * np.cos(theta) + ky * np.sin(theta))
+    kyr = (ky * np.cos(theta) - kx * np.sin(theta))
 
-        kr2 = kxri**2 + kyri**2
-        krw02 = (kxri - w0)**2 + kyri**2
-        
-        psi[i, j] = PI2 * s[i] * (np.exp(- 0.5 * krw02) - np.exp(- 0.5 * w0**2) * np.exp(- 0.5 * kr2)) 
-        
+    for i in range(s.shape[0]):
+      kxri = s[i] * kxr
+      kyri = s[i] * kyr
+
+      kr2 = kxri**2 + kyri**2
+      krw02 = (kxri - w0)**2 + kyri**2
+
+      psi[i, j] = PI2 * s[i] * \
+          (np.exp(- 0.5 * krw02) - np.exp(- 0.5 * w0**2) * np.exp(- 0.5 * kr2))
+
   return psi
-
 
 
 def cwt2d(x, s, thetas, d1, d2, wavelet='morlet', w0=6):
@@ -330,10 +314,10 @@ def cwt2d(x, s, thetas, d1, d2, wavelet='morlet', w0=6):
 
   if s_arr.ndim is not 1:
     raise ValueError('s (scales) must be an 1d numpy array')
-    
+
   if th_arr.ndim is not 1:
     raise ValueError('thetas (rotation angles) must be an 1d numpy array')
-    
+
   n1, n2 = x_arr.shape
   w1 = angular_freq(n1)
   w2 = angular_freq(n2)
@@ -344,8 +328,9 @@ def cwt2d(x, s, thetas, d1, d2, wavelet='morlet', w0=6):
     raise ValueError('wavelet function is not available')
 
   # The array that will contain the transformed data of shape (n_scales, n_thetas, n_axis1, n_axis2)
-  X_ARR = np.empty((s_arr.shape[0], th_arr.shape[0], n1, n2), dtype='complex128')
-    
+  X_ARR = np.empty(
+      (s_arr.shape[0], th_arr.shape[0], n1, n2), dtype='complex128')
+
   # TODO replace numpy fft with a better FFT implementation
   # TODO add appropriate padding and tapering to ensure that the signal is periodical
   x_arr_ft = np.fft.fft2(x_arr)
@@ -353,14 +338,13 @@ def cwt2d(x, s, thetas, d1, d2, wavelet='morlet', w0=6):
   # Perform the circular convolution in Fourier domain
   for i in range(s_arr.shape[0]):
     for j in range(th_arr.shape[0]):
-      # Even if the Fourier transform of the Morlet wavelet is real, 
+      # Even if the Fourier transform of the Morlet wavelet is real,
       # keep the conjugate here, so as to allow other wavelets
-      X_ARR[i,j,:,:] = np.fft.ifft2(x_arr_ft * np.conj(psi[i,j]))
+      X_ARR[i, j, :, :] = np.fft.ifft2(x_arr_ft * np.conj(psi[i, j]))
 
   # TODO Write helper function to calculate adjustment coefficient for all n_axis1, n_axis2, d1 and d2
-        
-  return X_ARR
 
+  return X_ARR
 
 
 def icwt2d(X, s, thetas, d1, d2, wavelet='morlet', w0=6):
@@ -396,16 +380,15 @@ def icwt2d(X, s, thetas, d1, d2, wavelet='morlet', w0=6):
 
   if s_arr.ndim is not 1:
     raise ValueError('s (scales) must be an 1d numpy array')
-    
+
   if th_arr.ndim is not 1:
     raise ValueError('thetas (rotation angles) must be an 1d numpy array')
 
-
   # Default Python behavior is to pass on pointers for arrays
-  # Therefore, we have to create a new array in order not to mess up 
-  # the input data 
+  # Therefore, we have to create a new array in order not to mess up
+  # the input data
   X_ARR = np.empty_like(X_arr)
-    
+
   # The reconstruction can be performed as a weighted summation
   for i in range(s_arr.shape[0]):
     X_ARR[i] = X_arr[i] / s_arr[i]
@@ -416,5 +399,3 @@ def icwt2d(X, s, thetas, d1, d2, wavelet='morlet', w0=6):
   x = c * np.sum(np.sum(np.real(X_ARR), axis=1), axis=0)
 
   return x
-
-### END SLB CODE ###
